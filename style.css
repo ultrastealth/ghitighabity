@@ -1,0 +1,339 @@
+// Variables
+
+$nbSquares: 5; // Sync with HTML
+$radius: 125px;
+$gap: 5px;
+$borderRadius: 5px;
+
+// Visual variables
+
+$animating: true; 
+$rotating: true;
+$backfaceVisible: false;
+
+// White, red, green, blue, yellow, orange
+$colors: ( #f7f7f7, #ff3434, #00bd56, #207dff, #f7de1c, #f69314 );
+$colorBackground: #283149;
+
+// Animation variables
+$duration: 6s;
+$easing: ease-in-out;
+$animation: $duration $easing infinite;
+$colorsAnimation: ( 
+  nth( $colors, 1 ),
+  nth( $colors, 2 ),
+  nth( $colors, 5 ),
+  nth( $colors, 6 ),
+);
+
+$squares: $nbSquares * $nbSquares;
+$perspective: $radius * 8;
+
+// Mixins
+
+@mixin size ( $w, $h: $w )
+{
+  width: $w;
+  height: $h;
+}
+
+@mixin rotate3D ( $d, $x: 0, $y: 0, $z: 0, $angle: 360 )
+{
+  @keyframes rotate#{ $d }
+  {
+    to { transform: rotate3d( $x, $y, $z, $angle * 1deg ) }
+  }
+}
+
+@mixin rotationAnimation ( 
+  $d, 
+  $x: 0, 
+  $y: 0, 
+  $z: 0, 
+  $angle: 45,
+)
+{
+  $steps: 360 / $angle;
+  $percent: 100 / $steps;
+  
+  @keyframes rotationAnimation#{ $d }
+  {
+    @for $i from 0 through $steps
+    {
+      #{ $percent * $i }%
+      {
+        transform: rotate3d( $x, $y, $z, $angle * $i * 1deg );
+      }
+    }
+  }
+}
+
+// Rubik Cube Animations
+
+@mixin animationRubikCubePair ( $nbSquares )
+{
+  $rotationDirection: -X;
+  $indexMax: $nbSquares + 1;
+  
+  @for $index from 1 through $nbSquares / 2
+  {
+    $rotationDirection: if( $rotationDirection == X, -X, X );
+    
+    &:nth-of-type( #{ $nbSquares }n + #{ $index } ),
+    &:nth-of-type( #{ $nbSquares }n + #{ $indexMax - $index } )
+    {
+      animation-name: rotationAnimation#{ $rotationDirection };
+    }
+  }
+}
+
+@mixin animationRubikCubeImpair ( $nbSquares )
+{
+  @for $index from 1 through $nbSquares
+  {
+    $rotationDirection: if( $index % 2 == 0, -X, X );
+
+    &:nth-of-type( #{ $nbSquares }n + #{ $index } ),
+    {
+      animation-name: rotationAnimation#{ $rotationDirection };
+    }
+  }
+}
+
+@mixin RubikCubeAnimation ()
+{
+  $isPair: $nbSquares % 2 == 0;
+  
+  .face
+  {
+    &:nth-child( 1 ),
+    &:nth-child( 3 )
+    {
+      .squares
+      {
+        @if $isPair { @include animationRubikCubePair( $nbSquares ) }
+        @else { @include animationRubikCubeImpair ( $nbSquares ) }
+      }
+    }
+
+    &:nth-child( 2 )
+    {
+      .squares { animation-name: rotationAnimationZ }
+    }
+  }
+}
+
+@mixin createSquares ( $nbSquares, $size, $origin )
+{
+  $row: 0;
+  $col: 0;
+  $squares: $nbSquares * $nbSquares;
+  
+  @for $square from 0 through $squares
+  {
+    $col: $square % $nbSquares;
+
+    @if $col == 0 and $square > 0
+    {
+      $row: $row + 1;
+    }
+
+    &:nth-child( #{ $square + 1 } )
+    {
+      &::before,
+      &::after
+      {
+        left: $origin + $col * $size;
+        top: $origin + $row * $size;
+      }
+    }
+  }
+}
+
+@mixin createFaces ()
+{
+  @for $face from 0 through 2
+  {    
+    $index: $face * 2 + 1;
+    
+    &:nth-child( #{ $face + 1 } )
+    {
+      $colorBefore: nth( $colors, $index );
+      $colorAfter: nth( $colors, $index + 1 );
+      
+      .squares
+      {
+        &::before { background-color: $colorBefore }
+        &::after { background-color: $colorAfter }
+      
+        @content;
+      }
+    }
+  }
+}
+
+@mixin rubik-cube (
+  $radius, 
+  $nbSquares,
+  $colors,
+  $gap,
+)
+{
+  $diameter: $radius * 2;
+  $size: $diameter / $nbSquares;
+  $origin: -$radius + $gap / 2;  
+  
+  @include size( $diameter );
+  
+  .squares
+  {
+    &::before,
+    &::after
+    {
+      @include size( $size - $gap );
+    }
+  }
+  
+  .face
+  {
+    @include createFaces()
+    {
+      @include createSquares( $nbSquares, $size, $origin );
+    }
+    
+    &::before,
+    &::after
+    {
+      @include size( 100% );
+    }
+  }
+}
+
+// Extends
+
+%center
+{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+%fill
+{
+  @include size( 100% );
+}
+
+// Reset
+
+*,
+*::before,
+*::after
+{
+  outline: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+// Layout
+
+html
+{
+  width: 100vw;
+  height: 100vh;
+}
+
+body
+{
+  width: 100%;
+  height: 100%;
+}
+
+// Scene
+
+.scene
+{
+  @extend %center, %fill;
+  background-color: $colorBackground;
+  perspective: $perspective;
+  overflow: hidden;
+}
+
+// Rubik
+
+.rubik
+{
+  @extend %center;
+  @include rubik-cube( $radius, $nbSquares, $colors, $gap );
+  position: relative;
+  transform-style: preserve-3d;
+  
+  @if $rotating
+  {
+    animation: rotateXYZ $duration * 2 infinite linear;
+  }
+}
+
+// Face
+
+.face
+{  
+  @extend %center;
+  
+  position: absolute;
+  transform-style: preserve-3d;
+  
+  &:nth-child( 1 ) { transform: rotate3d( 0, 0, 0, 0deg ) }
+  &:nth-child( 2 ) { transform: rotate3d( 0, 1, 0, 90deg ) }
+  &:nth-child( 3 ) { transform: rotate3d( 1, 0, 0, 90deg ) }
+}
+
+// Squares
+
+.squares
+{
+  @extend %center;
+  
+  transform-style: preserve-3d;
+  animation: $animation;
+  
+  &,
+  &::before,
+  &::after
+  {
+    position: absolute;
+  }
+  
+  &::before,
+  &::after
+  {
+    content: '';
+    border-radius: $borderRadius;
+    animation: $animation;
+    
+    @if not $backfaceVisible
+    {
+      backface-visibility: hidden;
+    }
+  }
+  
+  &::before { transform: translate3d( 0, 0, $radius ) }
+  &::after { transform: rotate3d( 0, 1, 0, 180deg ) translate3d( 0, 0, $radius ) }
+}
+
+// Animations
+
+@if $animating
+{
+  @include RubikCubeAnimation();
+}
+
+// Keyframes
+
+@include rotate3D( XYZ, 1, 1, 1 );
+@include rotationAnimation( X, $x: 1 );
+@include rotationAnimation( -X, $x: -1 );
+@include rotationAnimation( Y, $y: 1 );
+@include rotationAnimation( -Y, $y: -1 );
+@include rotationAnimation( Z, $z: 1 );
